@@ -15,5 +15,5 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# Production: no --reload, 2 workers (increase if moving to PostgreSQL)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Development: --reload watches for code changes
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

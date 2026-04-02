@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, conint
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, Any
 
@@ -10,9 +10,9 @@ class UserBase(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    name: str
-    last_name: str
-    password: str
+    name: str = Field(..., max_length=255)
+    last_name: str = Field(..., max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class RegisterRequest(UserCreate):
@@ -26,17 +26,16 @@ class UserResponse(UserBase):
     city: Optional[str] = None
     country: Optional[str] = None
     group_id: Optional[int] = None
+    is_verified: bool = False
     created_at: datetime
 
     class Config:
         from_attributes = True
 
-# (resto igual)
-
 
 # Group schemas
 class GroupBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
 
 
 class GroupCreate(GroupBase):
@@ -44,7 +43,7 @@ class GroupCreate(GroupBase):
 
 
 class JoinGroupRequest(BaseModel):
-    invite_code: str
+    invite_code: str = Field(..., min_length=6, max_length=50)
 
 
 class GroupResponse(GroupBase):
@@ -73,13 +72,13 @@ class CategoryResponse(BaseModel):
 
 # Product schemas
 class ProductBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
     category_id: Optional[int] = None
     quantity: float = 0
-    unit: str = "unidad"
-    unit_type: str = "unit"
-    price_per_unit: float = 0
-    image_url: Optional[str] = None
+    unit: str = Field(default="unidad", max_length=50)
+    unit_type: str = Field(default="unit", max_length=20)
+    price_per_unit: float = Field(default=0, ge=0)
+    image_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class ProductCreate(ProductBase):
@@ -106,10 +105,10 @@ class ProductUpdate(BaseModel):
 # Purchase schemas
 class PurchaseCreate(BaseModel):
     product_id: int
-    quantity: float = 1
-    price: float = 0
-    store_name: str = ""
-    group_id: Optional[int] = None  # None = compra personal
+    quantity: float = Field(default=1, gt=0)
+    price: float = Field(default=0, ge=0)
+    store_name: str = Field(default="", max_length=255)
+    group_id: Optional[int] = None
 
 
 class PurchaseResponse(BaseModel):
@@ -131,7 +130,7 @@ class PurchaseWithProductResponse(BaseModel):
     product_id: int
     product_name: str
     product_image: Optional[str] = None
-    category_name: Optional[str] = None  # ✅ añadido
+    category_name: Optional[str] = None
     user_id: int
     group_id: Optional[int] = None
     quantity: float
@@ -143,7 +142,7 @@ class PurchaseWithProductResponse(BaseModel):
 # Shopping list schemas
 class ShoppingListCreate(BaseModel):
     product_id: int
-    quantity: float = 1
+    quantity: float = Field(default=1, gt=0)
 
 
 class ShoppingListItemResponse(BaseModel):
@@ -161,13 +160,18 @@ class ShoppingListItemResponse(BaseModel):
 # Auth schemas
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., max_length=128)
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class TokenRefreshResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 # Response schemas
@@ -181,7 +185,7 @@ class ApiResponse(BaseModel):
 # Verification schemas
 class VerificationRequest(BaseModel):
     email: EmailStr
-    code: str
+    code: str = Field(..., min_length=6, max_length=6)
 
 
 class VerificationResponse(BaseModel):
@@ -192,7 +196,8 @@ class VerificationResponse(BaseModel):
 class RegisterStep1Response(BaseModel):
     success: bool
     message: str
-    email: str 
+    email: str
+
 
 class GeoReverseResponse(BaseModel):
     city: str

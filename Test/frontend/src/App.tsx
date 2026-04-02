@@ -17,15 +17,26 @@ import CategoryDetails from './pages/analytics/CategoryDetails';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
-  return token ? children : <Navigate to="/login" />;
+  return token ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function App() {
   const loadUser = useAuthStore((state) => state.loadUser);
+  const authLoading = useAuthStore((state) => state.authLoading);
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  // Show a full-page spinner while the initial refresh is in flight.
+  // This prevents a flash-redirect to /login for users who are already logged in.
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
@@ -41,7 +52,7 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="groups" element={<Groups />} />

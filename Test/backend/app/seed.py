@@ -1,7 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models import Category, Product, Group
-import random
+import secrets
+import string
+
 
 CATEGORIES = [
     {"name": "Frutas", "icon": "apple", "color": "green", "image_url": "/static/categories/frutas.webp"},
@@ -20,70 +22,86 @@ CATEGORIES = [
 
 PRODUCTS_BY_CATEGORY = {
     "Frutas": ["Manzana", "Plátano", "Naranja", "Pera", "Uvas", "Fresas", "Sandía", "Kiwi", "Piña"],
-    "Verduras": ["Acelga", "Ajo", "Apio", "Berenjena", "Boniato", "Brócoli", "Calabacín", "Cebolla", "Col", "Coliflor", "Col de Bruselas", "Espinaca", "Kiwi", "Lechuga", "Nabo", "Patata", "Pimiento", "Rábano", "Remolacha", "Rúcula", "Tomate", "Zanahoria"],
+    "Verduras": ["Acelga", "Ajo", "Apio", "Berenjena", "Boniato", "Brócoli", "Calabacín", "Cebolla", "Col", "Coliflor", "Col de Bruselas", "Espinaca", "Lechuga", "Nabo", "Patata", "Pimiento", "Rábano", "Remolacha", "Rúcula", "Tomate", "Zanahoria"],
     "Carnes": ["Pollo", "Ternera", "Cerdo", "Cordero", "Pavo", "Salchichas", "Hamburguesas"],
     "Panes y Bolleria": ["Pan de molde", "Baguette", "Magdalenas", "Bollos", "Galletas"],
     "Lácteos": ["Leche", "Queso", "Yogur", "Mantequilla", "Nata"],
     "Bebidas": ["Agua", "Refresco", "Zumo", "Café", "Té"],
     "Limpieza": ["Detergente", "Desinfectante", "Suavizante", "Limpiador de Cristales", "Estropajo", "Bayeta"],
     "Gasolina": ["Gasolina", "Diésel", "Otros_Gastos"],
-    "Congelados": ["Pizza", "Verduras", "Helado", "Pescado", "Patatas fritas"],
+    "Congelados": ["Pizza", "Verduras congeladas", "Helado", "Pescado", "Patatas fritas"],
     "Snacks": ["Chips", "Frutos secos", "Chocolate", "Palomitas", "Barritas"],
     "Higiene personal": ["Cepillo de dientes", "Pasta de dientes", "Shampoo", "Protector solar", "Papel higiénico"],
     "Suministros": ["Alquiler", "Teléfono", "Gas"],
 }
 
+# Fixed random prices for deterministic seeding (no random module needed)
+_PRICES = [1.50, 2.30, 3.75, 5.00, 1.20, 4.40, 2.80, 6.50, 3.10, 1.90]
+
+
+def _price_for(index: int) -> float:
+    return _PRICES[index % len(_PRICES)]
+
 
 async def seed_products_for_group(db: AsyncSession, group_id: int):
-    """Insertar categorías y productos para un grupo"""
-    
-    # Crear categorías
-    created_categories = {}
+    """Batch-insert categories and products for a group."""
+
+    # ── Categories (single flush) ─────────────────────────────────────────────
+    category_objects = []
     for cat_data in CATEGORIES:
-        category = Category(
+        cat = Category(
             name=cat_data["name"],
             icon=cat_data["icon"],
             color=cat_data["color"],
             group_id=group_id,
-            is_default=True
+            is_default=True,
         )
-        db.add(category)
-        await db.flush()
-        created_categories[cat_data["name"]] = category
-    
-    # Crear productos para cada categoría
-    for cat_name, products in PRODUCTS_BY_CATEGORY.items():
+        category_objects.append(cat)
+
+    db.add_all(category_objects)
+    await db.flush()  # single round-trip for all categories
+
+    created_categories = {cat.name: cat for cat in category_objects}
+
+    # ── Products (single flush) ───────────────────────────────────────────────
+    product_objects = []
+    price_idx = 0
+
+    for cat_name, product_names in PRODUCTS_BY_CATEGORY.items():
         category = created_categories.get(cat_name)
-        if category:
-            for product_name in products:
-                # Determinar unidad según categoría
-                if cat_name in ["Frutas", "Verduras"]:
-                    unit, unit_type = "kg", "weight"
-                elif cat_name == "Gasolina":
-                    unit, unit_type = "litros", "volume"
-                elif cat_name in ["Lácteos", "Bebidas"]:
-                    unit, unit_type = "litros", "volume"
-                elif cat_name == "Higiene personal":
-                    unit, unit_type = "unidad", "unit"
-                elif cat_name == "Suministros":
-                    unit, unit_type = "mes", "service"
-                else:
-                    unit, unit_type = "unidad", "unit"
-                
-                # Precio aleatorio para demo
-                price = round(random.uniform(1, 10), 2)
-                
-                product = Product(
-                    name=product_name,
+        if not category:
+            continue
+
+        if cat_name in ("Frutas", "Verduras"):
+            unit, unit_type = "kg", "weight"
+        elif cat_name in ("Gasolina", "Lácteos", "Bebidas"):
+            unit, unit_type = "litros", "volume"
+        elif cat_name == "Higiene personal":
+            unit, unit_type = "unidad", "unit"
+        elif cat_name == "Suministros":
+            unit, unit_type = "mes", "service"
+        else:
+            unit, unit_type = "unidad", "unit"
+
+        for name in product_names:
+            product_objects.append(
+                Product(
+                    name=name,
                     category_id=category.id,
-                    quantity=random.randint(0, 20),
+                    quantity=price_idx % 21,  # 0-20 deterministic
                     unit=unit,
                     unit_type=unit_type,
-                    price_per_unit=price,
+                    price_per_unit=_price_for(price_idx),
                     group_id=group_id,
-                    status="ok"
+                    status="ok",
                 )
-                db.add(product)
-    
+            )
+            price_idx += 1
+
+    db.add_all(product_objects)
     await db.commit()
-    print(f"✅ Creadas {len(CATEGORIES)} categorías y {sum(len(p) for p in PRODUCTS_BY_CATEGORY.values())} productos")
+
+    print(
+        f"Seeded {len(CATEGORIES)} categories and "
+        f"{len(product_objects)} products for group {group_id}"
+    )

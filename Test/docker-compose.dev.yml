@@ -1,0 +1,24 @@
+version: '3.8'
+
+# Development overrides – hot-reload, source mounts
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - ./backend/data:/app/data
+    environment:
+      - DEBUG=true
+      - SEED_DEMO_DATA=true
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile        # uses the dev image (npm run dev)
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
