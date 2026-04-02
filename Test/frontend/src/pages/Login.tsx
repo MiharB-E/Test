@@ -7,31 +7,22 @@ export default function Login() {
   const location = useLocation();
   const login = useAuthStore((s) => s.login);
 
-  const [email, setEmail] = useState('demo@invcasa.com');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [debug, setDebug] = useState<string>('');
   const successMessage = location.state?.message;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setDebug('Iniciando login...');
 
     const ok = await login(email.toLowerCase().trim(), password);
 
     if (!ok) {
-      setError('Login failed');
+      setError('Email o contraseña incorrectos');
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('Token NO se guardó en LocalStorage');
-      return;
-    }
-
-    setDebug('Login OK, redirigiendo...');
     navigate('/dashboard');
   };
 
@@ -55,6 +46,7 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             className="input"
             required
+            autoComplete="email"
           />
           <input
             type="password"
@@ -63,6 +55,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             className="input"
             required
+            autoComplete="current-password"
           />
 
           {error && <p className="text-sm text-red-500">{error}</p>}
@@ -78,12 +71,6 @@ export default function Login() {
             Regístrate
           </Link>
         </p>
-
-        {debug && (
-          <pre className="mt-4 text-xs bg-gray-100 p-3 rounded-xl overflow-auto">
-            {debug}
-          </pre>
-        )}
       </div>
     </div>
   );

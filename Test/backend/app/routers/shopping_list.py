@@ -1,20 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
-from typing import List
 
 from app.database import get_db
-from app.models import ShoppingListItem, Product, Category
+from app.models import ShoppingListItem, Product, Category, User
 from app.schemas import ShoppingListCreate, ShoppingListItemResponse
-from app.dependencies import get_current_group
+from app.dependencies import get_current_group, get_current_user
 
 router = APIRouter(prefix="/api/shopping-list", tags=["shopping-list"])
 
+# Allowed status values
+ShoppingListStatus = Literal["pending", "purchased", "skipped"]
 
-@router.get("", response_model=List[ShoppingListItemResponse])
+
+@router.get("", response_model=list[ShoppingListItemResponse])
 async def get_shopping_list(
     db: AsyncSession = Depends(get_db),
-    group_id: int = Depends(get_current_group)
+    group_id: int = Depends(get_current_group),
 ):
     result = await db.execute(
         select(ShoppingListItem, Product, Category.name)
@@ -33,7 +37,7 @@ async def get_shopping_list(
             unit=product.unit,
             quantity=item.quantity,
             status=item.status,
-            created_at=item.created_at
+            created_at=item.created_at,
         )
         for item, product, category_name in rows
     ]
@@ -43,7 +47,7 @@ async def get_shopping_list(
 async def add_to_shopping_list(
     payload: ShoppingListCreate,
     db: AsyncSession = Depends(get_db),
-    group_id: int = Depends(get_current_group)
+    group_id: int = Depends(get_current_group),
 ):
     product_result = await db.execute(
         select(Product, Category.name)
@@ -75,13 +79,13 @@ async def add_to_shopping_list(
             unit=product.unit,
             quantity=existing_item.quantity,
             status=existing_item.status,
-            created_at=existing_item.created_at
+            created_at=existing_item.created_at,
         )
 
     item = ShoppingListItem(
         product_id=payload.product_id,
         quantity=payload.quantity,
-        status="pending"
+        status="pending",
     )
     db.add(item)
     await db.commit()
@@ -96,24 +100,31 @@ async def add_to_shopping_list(
         unit=product.unit,
         quantity=item.quantity,
         status=item.status,
-        created_at=item.created_at
+        created_at=item.created_at,
     )
 
 
 @router.patch("/{item_id}/status")
 async def update_status(
     item_id: int,
-    status: str,
-    db: AsyncSession = Depends(get_db)
+    new_status: ShoppingListStatus = Query(..., alias="status"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(ShoppingListItem).where(ShoppingListItem.id == item_id)
+        select(ShoppingListItem, Product)
+        .join(Product, ShoppingListItem.product_id == Product.id)
+        .where(ShoppingListItem.id == item_id)
     )
-    item = result.scalar_one_or_none()
-    if not item:
+    row = result.first()
+    if not row:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    item.status = status
+    item, product = row
+    if product.group_id != current_user.group_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    item.status = new_status
     await db.commit()
     return {"success": True, "status": item.status}
 
@@ -121,8 +132,22 @@ async def update_status(
 @router.delete("/{item_id}")
 async def delete_item(
     item_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    result = await db.execute(
+        select(ShoppingListItem, Product)
+        .join(Product, ShoppingListItem.product_id == Product.id)
+        .where(ShoppingListItem.id == item_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    item, product = row
+    if product.group_id != current_user.group_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     await db.execute(delete(ShoppingListItem).where(ShoppingListItem.id == item_id))
     await db.commit()
-    return {"success": True} ; 
+    return {"success": True} 

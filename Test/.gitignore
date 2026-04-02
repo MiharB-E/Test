@@ -26,3 +26,7 @@ env/
 node_modules/
 dist/
 .DS_Store
+
+# Developer utility output (exportar_todo.py)
+proyecto_exportado.txt
+

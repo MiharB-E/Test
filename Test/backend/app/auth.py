@@ -1,7 +1,12 @@
-from datetime import datetime, timedelta
+import hashlib
+import secrets
+import string
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
 from app.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -15,36 +20,46 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def _utcnow() -> datetime:
+    """Return the current UTC time as a timezone-aware datetime."""
+    return datetime.now(timezone.utc)
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-
-    # FIX: "sub" debe ser string para cumplir JWT spec
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
-
-    # Token que NO expira (expiración en el año 2099)
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        # 30 años (aproximadamente hasta 2099)
-        expire = datetime.utcnow() + timedelta(days=365 * 30)
-
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-    return encoded_jwt
+    expire = _utcnow() + (
+        expires_delta
+        if expires_delta
+        else timedelta(minutes=settings.access_token_expire_minutes)
+    )
+    to_encode["exp"] = expire
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
 def decode_access_token(token: str) -> Optional[dict]:
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        return payload
+        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except JWTError:
         return None
 
 
+def create_refresh_token() -> tuple[str, str]:
+    """
+    Return (raw_token, sha256_hash).
+    Store only the hash in the database; send the raw token to the client.
+    """
+    raw = secrets.token_urlsafe(64)
+    hashed = hashlib.sha256(raw.encode()).hexdigest()
+    return raw, hashed
+
+
+def hash_refresh_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def generate_invite_code() -> str:
-    import secrets
-    import string
     alphabet = string.ascii_uppercase + string.digits
-    alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '')
-    return ''.join(secrets.choice(alphabet) for _ in range(8))
+    alphabet = alphabet.replace("0", "").replace("O", "").replace("1", "").replace("I", "")
+    return "".join(secrets.choice(alphabet) for _ in range(8))

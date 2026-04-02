@@ -6,6 +6,7 @@ export interface User {
   name: string;
   last_name?: string | null;
   group_id: number | null;
+  is_verified: boolean;
   created_at: string;
 }
 
@@ -22,9 +23,9 @@ export interface RegisterResponse {
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/login', { 
-    email: email.toLowerCase().trim(), 
-    password 
+  const response = await api.post<LoginResponse>('/login', {
+    email: email.toLowerCase().trim(),
+    password,
   });
   return response.data;
 };
@@ -37,12 +38,15 @@ export const register = async (data: {
 }): Promise<RegisterResponse> => {
   const response = await api.post<RegisterResponse>('/register', {
     ...data,
-    email: data.email.toLowerCase().trim()
+    email: data.email.toLowerCase().trim(),
   });
   return response.data;
 };
 
 export const verifyCode = async (email: string, code: string) => {
-  const response = await api.post('/verify', { email: email.toLowerCase().trim(), code });
+  const response = await api.post('/verify', {
+    email: email.toLowerCase().trim(),
+    code,
+  });
   return response.data;
 };

@@ -14,12 +14,12 @@ export default function Verify() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       await verifyCode(email, code);
       navigate('/login', { state: { message: '¡Cuenta verificada! Inicia sesión.' } });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Código inválido');
+    } catch (err: unknown) {
+      setError((err as any)?.response?.data?.detail || 'Código inválido');
     } finally {
       setLoading(false);
     }
@@ -40,20 +40,18 @@ export default function Verify() {
             onChange={(e) => setCode(e.target.value)}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-2xl tracking-widest focus:border-purple-400 focus:outline-none"
             maxLength={6}
+            inputMode="numeric"
             required
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="w-full rounded-xl bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
             disabled={loading}
           >
             {loading ? 'Verificando...' : 'Verificar cuenta'}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-500">
-           Código de prueba: <strong className="text-purple-600">123456</strong> 
-        </p>
       </div>
     </div>
   );
