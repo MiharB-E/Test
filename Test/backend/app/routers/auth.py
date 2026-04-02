@@ -66,9 +66,15 @@ async def register_step1(
         delete(PendingRegistration).where(PendingRegistration.email == email)
     )
 
+    # Always create a verification code and attempt to send it.
+    # This ensures the response time is constant regardless of whether the email
+    # already exists, preventing timing-based email enumeration.
+    code = await create_verification_code(db, email)
+
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:
-        # Generic response to avoid email enumeration
+        # Do NOT create a pending registration, but return the same generic
+        # message so the caller cannot determine whether the email is registered.
         return RegisterStep1Response(
             success=True,
             message=f"If this email is new, a verification code has been sent to {email}",
@@ -88,7 +94,6 @@ async def register_step1(
     db.add(pending)
     await db.commit()
 
-    code = await create_verification_code(db, email)
     email_sent = await send_verification_email(to_email=email, code=code, name=user_data.name)
 
     if not email_sent and settings.SMTP_USER:

@@ -25,7 +25,9 @@ async def get_stats(
         )
         purchase_scope = [Purchase.group_id == current_user.group_id]
 
-    # Two queries instead of five: one for product aggregates, one for purchase aggregates
+    # Two queries instead of five: one for product aggregates, one for purchase aggregates.
+    # NOTE: Purchase.price stores the *total* price of the transaction (not price-per-unit;
+    # that lives on Product.price_per_unit).  Summing it directly gives the correct spend.
     product_agg = await db.execute(
         select(
             func.count().label("total"),

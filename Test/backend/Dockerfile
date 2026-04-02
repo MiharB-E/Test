@@ -15,5 +15,6 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# Production: no --reload, 2 workers (increase if moving to PostgreSQL)
+# Production: 1 worker because SQLite serialises writes at the connection level.
+# Increase workers (2-4) when switching to PostgreSQL.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

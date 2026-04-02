@@ -15,7 +15,9 @@ os.makedirs("/app/data", exist_ok=True)
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
-    # For SQLite: allow concurrent reads while blocking on writes
+    # check_same_thread=False is required by aiosqlite: the async engine uses
+    # a single background thread per connection so SQLAlchemy's built-in
+    # thread-safety check would always fire a false positive.
     connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
 )
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
