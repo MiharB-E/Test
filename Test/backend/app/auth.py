@@ -1,0 +1,50 @@
+from datetime import datetime, timedelta
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from app.config import settings
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+
+    # FIX: "sub" debe ser string para cumplir JWT spec
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
+    # Token que NO expira (expiración en el año 2099)
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        # 30 años (aproximadamente hasta 2099)
+        expire = datetime.utcnow() + timedelta(days=365 * 30)
+
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    return encoded_jwt
+
+
+def decode_access_token(token: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        return payload
+    except JWTError:
+        return None
+
+
+def generate_invite_code() -> str:
+    import secrets
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '')
+    return ''.join(secrets.choice(alphabet) for _ in range(8))

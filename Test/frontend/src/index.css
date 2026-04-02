@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: #2f2f3f;
+}
+
+body {
+  margin: 0;
+  background-color: #f7f5ff;
+}
+
+.input {
+  @apply w-full rounded-xl border border-purple-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400;
+}
+
+.btn-primary {
+  @apply rounded-xl bg-purple-600 px-4 py-2 text-white shadow-sm transition hover:bg-purple-700;
+}
+
+.btn-secondary {
+  @apply rounded-xl border border-purple-600 px-4 py-2 text-purple-600 transition hover:bg-purple-50;
+}
