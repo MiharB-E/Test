@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = "invcasa.info@gmail.com"
-    SMTP_PASSWORD: str = "zuhg xtdc oggl lhlm"
+    SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "invcasa.info@gmail.com"
     SMTP_FROM_NAME: str = "InvCasa"
     EMAIL_VERIFICATION_EXPIRE_MINUTES: int = 30

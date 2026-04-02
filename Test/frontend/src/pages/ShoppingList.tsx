@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/dataStore';
 import { Package, MessageSquarePlus } from 'lucide-react';
+import api from '../services/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -40,12 +41,24 @@ export default function ShoppingList() {
 
   const orderedCategories = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
 
-  const submitRequest = (e: React.FormEvent) => {
+  const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!requestName.trim()) return;
-    setRequests((prev) => [...prev, { name: requestName.trim(), notes: requestNotes.trim() }]);
-    setRequestName('');
-    setRequestNotes('');
+
+    try {
+      await api.post('/requests', {
+        name: requestName.trim(),
+        notes: requestNotes.trim(),
+      });
+
+      setRequests((prev) => [...prev, { name: requestName.trim(), notes: requestNotes.trim() }]);
+      setRequestName('');
+      setRequestNotes('');
+      alert('✅ Solicitud enviada');
+    } catch (err) {
+      console.error(err);
+      alert('❌ No se pudo enviar la solicitud');
+    }
   };
 
   if (loading) return <div className="p-8 text-center">Cargando lista...</div>;

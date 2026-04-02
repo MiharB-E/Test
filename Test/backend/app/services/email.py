@@ -179,3 +179,40 @@ InvCasa - Gestión inteligente de tu hogar
     except Exception as e:
         print(f"❌ Error sending email: {e}")
         return False
+
+
+def send_product_request_email(
+    product_name: str,
+    notes: str | None,
+    requester: str | None = None,
+) -> bool:
+    """Send a plain-text email notifying of a new product request."""
+    subject = "Nueva solicitud de producto (InvCasa)"
+
+    body = f"""Nueva solicitud de producto:
+
+Producto: {product_name}
+Notas: {notes or "-"}
+Usuario: {requester or "N/D"}
+"""
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+        message["To"] = settings.SMTP_FROM_EMAIL
+
+        part_text = MIMEText(body, "plain")
+        message.attach(part_text)
+
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(message)
+
+        print("✅ Product request email sent")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error sending product request email: {e}")
+        return False

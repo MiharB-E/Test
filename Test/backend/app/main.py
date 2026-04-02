@@ -6,7 +6,7 @@ import os
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth_router, groups_router, products_router, purchases_router, dashboard_router, shopping_list_router
+from app.routers import auth_router, groups_router, products_router, purchases_router, dashboard_router, shopping_list_router, requests_router
 from app.routers.geo import router as geo_router
 
 
@@ -47,6 +47,7 @@ app.include_router(purchases_router)
 app.include_router(dashboard_router)
 app.include_router(shopping_list_router)
 app.include_router(geo_router)
+app.include_router(requests_router)
 
 
 @app.get("/health")
