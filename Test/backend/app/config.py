@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = True
     
-    database_url: str = "sqlite+aiosqlite:///./invcasa.db"
+    database_url: str = "sqlite+aiosqlite:////app/data/invcasa.db"
     secret_key: str = "your-super-secret-key-change-this-in-production"
     algorithm: str = "HS256"
     # CAMBIA ESTA LÍNEA: 30 años = 15,768,000 minutos
